@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malaspina Colony Planner</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #00ccff;
+    --accent2: #ff8c00;
+    --green: #00cc66;
+    --red: #ff4444;
+    --yellow: #ffdd00;
+    --purple: #cc88ff;
+    --text: #ccccdd;
+    --muted: #666677;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Consolas', monospace; font-size: 13px; min-height: 100vh; }
+
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+  .sys-input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .sys-input-row input[type=text] { flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:6px 10px; font-family:inherit; font-size:12px; border-radius:3px; }
+  .sys-input-row input[type=text]:focus { outline:none; border-color:var(--accent); }
+  .sys-input-row .label { font-size:11px; color:var(--muted); min-width:70px; }
+  .sys-input-row .btn-icon { background:var(--bg3); border:1px solid var(--border); color:var(--muted); padding:5px 8px; cursor:pointer; border-radius:3px; font-size:12px; }
+  .sys-input-row .btn-icon:hover { border-color:var(--accent); color:var(--accent); }
+  .sys-input-row .btn-icon.remove:hover { border-color:var(--red); color:var(--red); }
+  .sys-coords-hint { font-size:10px; margin-left:78px; margin-top:-4px; margin-bottom:6px; }
+  .waypoints-container { border-left:2px solid var(--border); padding-left:12px; margin:4px 0 4px 34px; }
+  header h1 { color: var(--accent); font-size: 18px; letter-spacing: 2px; text-transform: uppercase; }
+  header .sub { color: var(--muted); font-size: 11px; }
+
+  .layout { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 49px); }
+
+  /* PANEL IZQUIERDO */
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-section { border-bottom: 1px solid var(--border); padding: 12px; }
+  .sidebar-section h3 { color: var(--accent2); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+  .drop-zone { border: 1px dashed var(--border); border-radius: 4px; padding: 16px; text-align: center; cursor: pointer; transition: border-color .2s; }
+  .drop-zone:hover { border-color: var(--accent); }
+  .drop-zone.drag-over { border-color: var(--green); background: rgba(0,204,102,.05); }
+  .drop-zone p { color: var(--muted); font-size: 11px; }
+  .drop-zone p strong { color: var(--accent); }
+
+  input[type=file] { display: none; }
+
+  .btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 3px; transition: border-color .2s, color .2s; width: 100%; margin-top: 6px; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn.primary:hover { background: rgba(0,204,255,.1); }
+  .btn.success { border-color: var(--green); color: var(--green); }
+  .btn.success:hover { background: rgba(0,204,102,.1); }
+  .btn.warn { border-color: var(--accent2); color: var(--accent2); }
+  .btn.warn:hover { background: rgba(255,140,0,.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .cmdr-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .cmdr-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 3px; cursor: pointer; margin-bottom: 2px; }
+  .cmdr-item:hover { background: var(--bg3); }
+  .cmdr-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+  .cmdr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cmdr-name { flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmdr-count { color: var(--muted); font-size: 10px; }
+
+  .sel-controls { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .sel-controls .btn { margin: 0; font-size: 10px; padding: 3px 8px; }
+
+  /* PANEL DERECHO */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+
+  .tabs { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 16px; cursor: pointer; color: var(--muted); font-size: 12px; border-bottom: 2px solid transparent; transition: all .2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-content { flex: 1; overflow-y: auto; padding: 16px; display: none; }
+  .tab-content.active { display: block; }
+
+  /* PROGRESS */
+  .progress-bar { background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; height: 6px; margin: 8px 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width .3s; width: 0; }
+  .status-text { color: var(--muted); font-size: 11px; margin: 4px 0; }
+
+  /* RESULTS */
+  .result-section { margin-bottom: 24px; }
+  .result-section h2 { color: var(--accent2); font-size: 13px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--bg3); color: var(--accent2); padding: 6px 8px; text-align: left; border: 1px solid var(--border); position: sticky; top: 0; white-space: nowrap; }
+  td { padding: 5px 8px; border: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .dist-badge { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+  .dist-near { border-color: var(--green); color: var(--green); }
+  .dist-mid { border-color: var(--yellow); color: var(--yellow); }
+  .dist-far { border-color: var(--accent2); color: var(--accent2); }
+
+  .pair-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .pair-sys { font-size: 12px; flex: 1; }
+  .pair-sys .cmdr-tag { font-size: 10px; padding: 1px 5px; border-radius: 2px; }
+  .pair-arrow { color: var(--muted); }
+
+  .route-step { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; margin-bottom: 4px; }
+  .route-num { color: var(--muted); font-size: 10px; min-width: 24px; }
+  .route-sys { flex: 1; font-size: 12px; }
+  .route-dist { color: var(--muted); font-size: 10px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 12px; line-height: 1.8; }
+
+  .stat-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .stat-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px; min-width: 120px; }
+  .stat-box .val { font-size: 20px; font-weight: bold; color: var(--accent); }
+  .stat-box .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .filter-row label { font-size: 11px; color: var(--muted); }
+  .filter-row input[type=range] { accent-color: var(--accent); }
+  .filter-row span { color: var(--accent); font-size: 11px; min-width: 50px; }
+  .filter-row input[type=text] { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; font-family: inherit; font-size: 11px; border-radius: 3px; width: 160px; }
+
+  .coords-missing { color: var(--red); font-size: 10px; }
+  .coords-ok { color: var(--green); font-size: 10px; }
+
+  .info-box { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 10px 12px; margin-bottom: 12px; font-size: 11px; color: var(--muted); border-radius: 3px; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="flex:1">
+    <h1>⚙ Malaspina Colony Planner</h1>
+    <div class="sub">Análisis de proximidad entre sistemas de colonización · Elite Dangerous</div>
+  </div>
+  <button class="btn" style="width:auto;padding:6px 14px" onclick="exportCSV()">📥 Exportar CSV</button>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>Importar CSV</h3>
+      <div class="drop-zone" id="dropZone">
+        <p>Arrastra el CSV aquí<br>o <strong>haz clic</strong> para seleccionar</p>
+        <input type="file" id="fileInput" accept=".csv">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Coordenadas EDSM</h3>
+      <div class="progress-bar"><div class="progress-fill" id="coordsProgress"></div></div>
+      <div class="status-text" id="coordsStatus">Sin datos cargados</div>
+      <button class="btn primary" id="fetchBtn" disabled>🌐 Obtener coordenadas</button>
+    </div>
+
+    <div class="sel-controls">
+      <button class="btn" id="selAll">Todos</button>
+      <button class="btn" id="selNone">Ninguno</button>
+      <button class="btn warn" id="analyzeBtn" disabled>⚡ Analizar</button>
+    </div>
+
+    <div class="cmdr-list" id="cmdrList">
+      <div style="padding:20px;text-align:center;color:var(--muted);font-size:11px;">
+        Importa un CSV para ver los CMDRs
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" data-tab="proximity">Proximidad</div>
+      <div class="tab" data-tab="route">Ruta Eficiente</div>
+      <div class="tab" data-tab="matrix">Matriz</div>
+      <div class="tab" data-tab="data">Datos</div>
+      <div class="tab" data-tab="manual">Colonización Manual</div>
+    </div>
+
+    <div class="tab-content active" id="tab-proximity">
+      <div class="empty-state" id="emptyProximity">
+        <div class="icon">🔭</div>
+        <p>Importa un CSV, selecciona CMDRs,<br>obtén coordenadas y pulsa <strong>Analizar</strong></p>
+      </div>
+      <div id="proximityContent" style="display:none"></div>
+    </div>
+
+    <div class="tab-content" id="tab-route">
+      <div class="empty-state" id="emptyRoute">
+        <div class="icon">🗺️</div>
+        <p>El análisis generará una ruta eficiente<br>entre todos los sistemas seleccionados</p>
+      </div>
+      <div id="routeContent" style="display:none"></div>
+    </div>
+
+    <div class="tab-content" id="tab-matrix">
+      <div class="empty-state" id="emptyMatrix">
+        <div class="icon">📊</div>
+        <p>Tabla de distancias mínimas entre CMDRs</p>
+      </div>
+      <div id="matrixContent" style="display:none"></div>
+    </div>
+
+    <div class="tab-content" id="tab-data">
+      <div class="empty-state" id="emptyData">
+        <div class="icon">📋</div>
+        <p>Aquí verás los sistemas cargados<br>y el estado de sus coordenadas</p>
+      </div>
+      <div id="dataContent" style="display:none"></div>
+    </div>
+
+    <div class="tab-content" id="tab-manual">
+      <div style="max-width:700px">
+        <div class="info-box" style="margin-bottom:16px">
+          Define origen, waypoints opcionales y destino. La ruta se calculará segmento a segmento consultando EDSM.
+        </div>
+
+        <!-- ORIGEN -->
+        <div class="sys-input-row">
+          <span class="label" style="color:var(--green)">Origen</span>
+          <input type="text" id="manualOrigin" placeholder="Nombre del sistema..." oninput="lookupManual('manualOrigin','hintOrigin')">
+          <button class="btn-icon" onclick="lookupManual('manualOrigin','hintOrigin')" title="Buscar en EDSM">🔍</button>
+        </div>
+        <div class="sys-coords-hint" id="hintOrigin"></div>
+
+        <!-- WAYPOINTS -->
+        <div class="waypoints-container" id="waypointsContainer"></div>
+        <div style="margin:4px 0 12px 78px">
+          <button class="btn" style="width:auto;padding:4px 12px;font-size:11px" onclick="addWaypoint()">＋ Añadir waypoint</button>
+        </div>
+
+        <!-- DESTINO -->
+        <div class="sys-input-row">
+          <span class="label" style="color:var(--red)">Destino</span>
+          <input type="text" id="manualDest" placeholder="Nombre del sistema..." oninput="lookupManual('manualDest','hintDest')">
+          <button class="btn-icon" onclick="lookupManual('manualDest','hintDest')" title="Buscar en EDSM">🔍</button>
+        </div>
+        <div class="sys-coords-hint" id="hintDest"></div>
+
+        <!-- OPCIONES + CALCULAR -->
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--muted)">Radio máx por paso:</label>
+          <input id="manualRadius" type="number" value="14.9" min="1" max="100" step="0.1"
+            style="width:64px;background:var(--bg3);border:1px solid var(--border);color:var(--accent);font-family:inherit;font-size:11px;padding:4px 6px;border-radius:3px;text-align:center">
+          <span style="font-size:11px;color:var(--muted)">Ly</span>
+          <button class="btn success" style="width:auto;padding:6px 18px" onclick="calcManualRoute()">🗺 Calcular ruta</button>
+        </div>
+
+        <div id="manualRouteResult" style="margin-top:20px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ──────────────────────────────────────────────────────────────
+// COLORES POR CMDR
+// ──────────────────────────────────────────────────────────────
+const PALETTE = [
+  '#00ccff','#ff8c00','#00cc66','#cc88ff','#ffdd00','#ff4444',
+  '#44ffaa','#ff88cc','#88ccff','#ffaa44','#aaffaa','#ff66ff',
+  '#66aaff','#ffcc66','#99ffcc','#ff9966','#66ffee','#ccaaff',
+  '#ff6699','#99ccff','#ffff66','#66ffaa','#ffaaaa','#aaff66',
+  '#ff8888','#88ffff','#ffcc88','#aa88ff','#88ff88','#ff88aa',
+  '#8888ff','#ffff88','#88ffcc','#cc88aa','#88ccaa','#ff4488',
+];
+
+// ──────────────────────────────────────────────────────────────
+// ESTADO GLOBAL
+// ──────────────────────────────────────────────────────────────
+let cmdrs = [];         // [{name, color, systems:[str], checked}]
+let coords = {};        // {systemName: {x,y,z} | null}
+let analysisResult = null;
+
+// ──────────────────────────────────────────────────────────────
+// CSV PARSING
+// ──────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  // Split lines
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
+  if (lines.length < 4) return null;
+
+  // Parse each line as CSV (handle quoted fields with commas)
+  function parseLine(line) {
+    const result = [];
+    let field = '';
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQuote = !inQuote; }
+      else if (c === ',' && !inQuote) { result.push(field.trim()); field = ''; }
+      else { field += c; }
+    }
+    result.push(field.trim());
+    return result;
+  }
+
+  const rows = lines.map(parseLine);
+
+  // Row 0: CMDR names at even columns
+  const nameRow = rows[0];
+  const parsed = [];
+  for (let col = 0; col < nameRow.length; col += 2) {
+    const rawName = nameRow[col] || '';
+    if (!rawName) continue;
+    // Strip leading number like "0 AHN SUYEONG" → "AHN SUYEONG"
+    const name = rawName.replace(/^\d+\s+/, '').trim();
+    if (!name || name.toUpperCase().includes('ÚLTIMA') || name.toUpperCase().includes('SISTEMA')) continue;
+    parsed.push({ col, name, systems: [] });
+  }
+
+  // Rows 3+: systems at even columns
+  for (let r = 3; r < rows.length; r++) {
+    const row = rows[r];
+    for (const cmdr of parsed) {
+      const sys = (row[cmdr.col] || '').trim();
+      if (sys && sys.toUpperCase() !== 'SISTEMA' && sys.length > 2) {
+        // Clean: remove trailing "SISTEMAS MÁS ALLÁ..." etc
+        if (sys.includes('SISTEMA') && sys.length > 10) continue;
+        parsed[parsed.indexOf(cmdr)].systems.push(sys.toUpperCase());
+      }
+    }
+  }
+
+  // Build final CMDRs, assign colors
+  cmdrs = parsed
+    .filter(c => c.systems.length > 0)
+    .map((c, i) => ({
+      name: c.name,
+      color: PALETTE[i % PALETTE.length],
+      systems: [...new Set(c.systems)], // deduplicate
+      checked: true,
+    }));
+
+  return cmdrs;
+}
+
+// ──────────────────────────────────────────────────────────────
+// UI: CMDR LIST
+// ──────────────────────────────────────────────────────────────
+function renderCmdrList() {
+  const el = document.getElementById('cmdrList');
+  if (!cmdrs.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px;">Sin datos</div>';
+    return;
+  }
+  el.innerHTML = cmdrs.map((c, i) => `
+    <div class="cmdr-item" onclick="toggleCmdr(${i})">
+      <input type="checkbox" ${c.checked ? 'checked' : ''} onclick="event.stopPropagation();toggleCmdr(${i})">
+      <div class="cmdr-dot" style="background:${c.color}"></div>
+      <span class="cmdr-name" title="${c.name}">${c.name}</span>
+      <span class="cmdr-count">${c.systems.length}</span>
+    </div>
+  `).join('');
+
+  updateButtons();
+}
+
+function toggleCmdr(i) {
+  cmdrs[i].checked = !cmdrs[i].checked;
+  renderCmdrList();
+}
+
+document.getElementById('selAll').onclick = () => {
+  cmdrs.forEach(c => c.checked = true);
+  renderCmdrList();
+};
+document.getElementById('selNone').onclick = () => {
+  cmdrs.forEach(c => c.checked = false);
+  renderCmdrList();
+};
+
+function updateButtons() {
+  const hasCmdrs = cmdrs.length > 0;
+  const hasSelected = cmdrs.some(c => c.checked);
+  const hasSomeCoords = Object.keys(coords).length > 0;
+  document.getElementById('fetchBtn').disabled = !hasCmdrs;
+  document.getElementById('analyzeBtn').disabled = !(hasSelected && hasSomeCoords);
+}
+
+// ──────────────────────────────────────────────────────────────
+// FILE IMPORT
+// ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) readFile(fileInput.files[0]);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => loadCSV(e.target.result);
+  reader.readAsText(file, 'UTF-8');
+}
+
+function loadCSV(text) {
+  const result = parseCSV(text);
+  if (!result || result.length === 0) {
+    alert('No se pudieron parsear CMDRs del CSV. Verifica el formato.');
+    return;
+  }
+  // Restore coords from localStorage
+  const stored = localStorage.getItem('malaspina_coords');
+  if (stored) coords = JSON.parse(stored);
+
+  renderCmdrList();
+  updateDataTab();
+  document.getElementById('coordsStatus').textContent =
+    `${cmdrs.length} CMDRs · ${getAllSystems().length} sistemas únicos`;
+  updateButtons();
+}
+
+
+// ──────────────────────────────────────────────────────────────
+// EDSM COORDS
+// ──────────────────────────────────────────────────────────────
+function getAllSystems() {
+  const s = new Set();
+  cmdrs.forEach(c => c.systems.forEach(sys => s.add(sys)));
+  return [...s];
+}
+
+document.getElementById('fetchBtn').onclick = fetchCoords;
+
+async function fetchCoords() {
+  const systems = getAllSystems();
+  const missing = systems.filter(s => !(s in coords));
+  if (missing.length === 0) {
+    document.getElementById('coordsStatus').textContent = '✓ Todas las coordenadas ya están en caché';
+    updateButtons();
+    return;
+  }
+
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  const fill = document.getElementById('coordsProgress');
+  const status = document.getElementById('coordsStatus');
+
+  const BATCH = 20;
+  let done = 0;
+
+  for (let i = 0; i < missing.length; i += BATCH) {
+    const batch = missing.slice(i, i + BATCH);
+    const params = batch.map(s => `systemName[]=${encodeURIComponent(s)}`).join('&');
+    const url = `https://www.edsm.net/api-v1/systems?${params}&showCoordinates=1`;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (Array.isArray(data)) {
+        const found = new Set(data.map(d => d.name.toUpperCase()));
+        batch.forEach(s => {
+          const entry = data.find(d => d.name.toUpperCase() === s.toUpperCase());
+          coords[s] = entry?.coords || null;
+        });
+      }
+    } catch (e) {
+      batch.forEach(s => { if (!(s in coords)) coords[s] = null; });
+    }
+    done += batch.length;
+    const pct = Math.round(done / missing.length * 100);
+    fill.style.width = pct + '%';
+    status.textContent = `Obteniendo coords: ${done}/${missing.length}...`;
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  // Save to localStorage
+  try { localStorage.setItem('malaspina_coords', JSON.stringify(coords)); } catch(e) {}
+
+  const ok = Object.values(coords).filter(v => v !== null).length;
+  const fail = Object.values(coords).filter(v => v === null).length;
+  status.textContent = `✓ ${ok} coords obtenidas · ${fail} no encontradas`;
+  btn.disabled = false;
+  updateButtons();
+  updateDataTab();
+}
+
+// ──────────────────────────────────────────────────────────────
+// DISTANCIA 3D
+// ──────────────────────────────────────────────────────────────
+function dist3d(a, b) {
+  if (!a || !b) return Infinity;
+  return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
+}
+
+function distColor(d) {
+  if (d < 10) return 'dist-near';
+  if (d < 25) return 'dist-mid';
+  return 'dist-far';
+}
+
+// ──────────────────────────────────────────────────────────────
+// ANÁLISIS
+// ──────────────────────────────────────────────────────────────
+document.getElementById('analyzeBtn').onclick = analyze;
+
+function analyze() {
+  const selected = cmdrs.filter(c => c.checked);
+  if (selected.length < 1) { alert('Selecciona al menos 1 CMDR'); return; }
+
+  // Build proximity pairs: for each system of each CMDR, find nearest from each OTHER CMDR
+  const pairs = [];
+  for (const cmdrA of selected) {
+    for (const sysA of cmdrA.systems) {
+      const coordA = coords[sysA];
+      if (!coordA) continue;
+      const nearest = [];
+      for (const cmdrB of selected) {
+        if (cmdrB === cmdrA) continue;
+        let bestDist = Infinity, bestSys = null;
+        for (const sysB of cmdrB.systems) {
+          const d = dist3d(coordA, coords[sysB]);
+          if (d < bestDist) { bestDist = d; bestSys = sysB; }
+        }
+        if (bestSys) nearest.push({ cmdr: cmdrB, sys: bestSys, dist: bestDist });
+      }
+      nearest.sort((a,b) => a.dist - b.dist);
+      pairs.push({ cmdrA, sysA, nearest });
+    }
+  }
+  pairs.sort((a,b) => (a.nearest[0]?.dist||Infinity) - (b.nearest[0]?.dist||Infinity));
+
+  // Route: nearest-neighbor TSP over all systems of selected CMDRs with coords
+  const allSys = [];
+  for (const c of selected) {
+    for (const s of c.systems) {
+      if (coords[s]) allSys.push({ name: s, cmdr: c, coords: coords[s] });
+    }
+  }
+  const route = nearestNeighborRoute(allSys);
+
+  // Matrix: min distance between each pair of CMDRs
+  const matrix = buildMatrix(selected);
+
+  analysisResult = { pairs, route, matrix, selected };
+  renderProximity();
+  renderRoute();
+  renderMatrix();
+
+  // Switch to proximity tab
+  switchTab('proximity');
+}
+
+function nearestNeighborRoute(systems) {
+  if (!systems.length) return [];
+  const visited = new Set();
+  const route = [];
+  let current = systems[0];
+  visited.add(current.name);
+  route.push({ ...current, legDist: 0 });
+  while (visited.size < systems.length) {
+    let best = null, bestDist = Infinity;
+    for (const s of systems) {
+      if (visited.has(s.name)) continue;
+      const d = dist3d(current.coords, s.coords);
+      if (d < bestDist) { bestDist = d; best = s; }
+    }
+    if (!best) break;
+    visited.add(best.name);
+    route.push({ ...best, legDist: bestDist });
+    current = best;
+  }
+  return route;
+}
+
+function buildMatrix(selected) {
+  const m = {};
+  for (const cA of selected) {
+    m[cA.name] = {};
+    for (const cB of selected) {
+      if (cA === cB) { m[cA.name][cB.name] = { dist: 0, sysA: null, sysB: null }; continue; }
+      let minD = Infinity, bestA = null, bestB = null;
+      for (const sA of cA.systems) {
+        for (const sB of cB.systems) {
+          const d = dist3d(coords[sA], coords[sB]);
+          if (d < minD) { minD = d; bestA = sA; bestB = sB; }
+        }
+      }
+      m[cA.name][cB.name] = { dist: minD, sysA: bestA, sysB: bestB };
+    }
+  }
+  return m;
+}
+
+// ──────────────────────────────────────────────────────────────
+// RENDER TABS
+// ──────────────────────────────────────────────────────────────
+function renderProximity() {
+  if (!analysisResult) return;
+  const { pairs, selected } = analysisResult;
+  const el = document.getElementById('proximityContent');
+  document.getElementById('emptyProximity').style.display = 'none';
+  el.style.display = 'block';
+
+  const totalSys = selected.reduce((s,c) => s + c.systems.filter(x => coords[x]).length, 0);
+  const avgDist = pairs.length
+    ? (pairs.reduce((s,p) => s + (p.nearest[0]?.dist||0), 0) / pairs.length).toFixed(1)
+    : 0;
+  const closePairs = pairs.filter(p => p.nearest[0]?.dist < 10).length;
+
+  // Filter state
+  let maxFilter = 50;
+  let searchFilter = '';
+
+  function html(maxD, search) {
+    const filtered = pairs.filter(p =>
+      (p.nearest[0]?.dist||Infinity) <= maxD &&
+      (search === '' || p.sysA.includes(search.toUpperCase()) ||
+        p.nearest.some(n => n.sys.includes(search.toUpperCase())))
+    );
+
+    const pairsHtml = filtered.map(p => {
+      const top = p.nearest.slice(0,3).map(n => `
+        <span class="dist-badge ${distColor(n.dist)}" title="${n.sys}">
+          <span style="color:${n.cmdr.color}">${n.cmdr.name.split(' ')[0]}</span>
+          · ${n.sys.length > 20 ? n.sys.slice(0,18)+'…' : n.sys}
+          · ${n.dist.toFixed(1)} Ly
+        </span>
+      `).join(' ');
+      return `
+        <div class="pair-card">
+          <div class="pair-sys">
+            <span class="dist-badge" style="background:transparent;border-color:${p.cmdrA.color};color:${p.cmdrA.color};margin-right:6px">${p.cmdrA.name.split(' ')[0]}</span>
+            ${p.sysA}
+          </div>
+          <div style="font-size:10px;color:var(--muted)">→</div>
+          <div style="flex:2;font-size:11px">${top}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="stat-row">
+        <div class="stat-box"><div class="val">${totalSys}</div><div class="lbl">sistemas con coords</div></div>
+        <div class="stat-box"><div class="val">${pairs.length}</div><div class="lbl">pares analizados</div></div>
+        <div class="stat-box"><div class="val" style="color:var(--green)">${closePairs}</div><div class="lbl">pares < 10 Ly</div></div>
+        <div class="stat-box"><div class="val">${avgDist}</div><div class="lbl">dist. media (Ly)</div></div>
+      </div>
+      <div class="filter-row">
+        <label>Dist. máx:</label>
+        <input type="range" min="1" max="200" value="${maxD}" id="distSlider">
+        <span id="distVal">${maxD} Ly</span>
+        <label>Buscar:</label>
+        <input type="text" id="searchInput" value="${search}" placeholder="nombre sistema...">
+        <span style="color:var(--muted);font-size:10px">${filtered.length} resultados</span>
+      </div>
+      <div id="pairsContainer">${pairsHtml || '<p style="color:var(--muted);font-size:11px">Sin resultados con estos filtros</p>'}</div>
+    `;
+  }
+
+  el.innerHTML = html(maxFilter, searchFilter);
+
+  el.querySelector('#distSlider').oninput = function() {
+    maxFilter = +this.value;
+    el.querySelector('#distVal').textContent = maxFilter + ' Ly';
+    el.querySelector('#pairsContainer').innerHTML = analysisResult.pairs.filter(p =>
+      (p.nearest[0]?.dist||Infinity) <= maxFilter &&
+      (searchFilter === '' || p.sysA.includes(searchFilter.toUpperCase()) ||
+        p.nearest.some(n => n.sys.includes(searchFilter.toUpperCase())))
+    ).map(p => {
+      const top = p.nearest.slice(0,3).map(n => `
+        <span class="dist-badge ${distColor(n.dist)}" title="${n.sys}">
+          <span style="color:${n.cmdr.color}">${n.cmdr.name.split(' ')[0]}</span>
+          · ${n.sys.length > 20 ? n.sys.slice(0,18)+'…' : n.sys}
+          · ${n.dist.toFixed(1)} Ly
+        </span>
+      `).join(' ');
+      return `<div class="pair-card">
+        <div class="pair-sys">
+          <span class="dist-badge" style="background:transparent;border-color:${p.cmdrA.color};color:${p.cmdrA.color};margin-right:6px">${p.cmdrA.name.split(' ')[0]}</span>
+          ${p.sysA}
+        </div>
+        <div style="font-size:10px;color:var(--muted)">→</div>
+        <div style="flex:2;font-size:11px">${top}</div>
+      </div>`;
+    }).join('') || '<p style="color:var(--muted);font-size:11px">Sin resultados</p>';
+  };
+
+  el.querySelector('#searchInput').oninput = function() {
+    searchFilter = this.value;
+    el.querySelector('#distSlider').dispatchEvent(new Event('input'));
+  };
+}
+
+function renderRoute() {
+  if (!analysisResult) return;
+  const { route } = analysisResult;
+  const el = document.getElementById('routeContent');
+  document.getElementById('emptyRoute').style.display = 'none';
+  el.style.display = 'block';
+
+  const total = route.reduce((s,r) => s + r.legDist, 0);
+  const steps = route.map((r, i) => `
+    <div class="route-step">
+      <span class="route-num">${i+1}</span>
+      <div class="route-sys">
+        <span style="color:${r.cmdr.color};font-size:10px;margin-right:6px">${r.cmdr.name.split(' ')[0]}</span>
+        ${r.name}
+      </div>
+      ${r.legDist > 0 ? `<span class="route-dist">+${r.legDist.toFixed(1)} Ly</span>` : '<span class="route-dist" style="color:var(--green)">INICIO</span>'}
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="info-box">
+      Ruta nearest-neighbor desde el primer sistema · ${route.length} paradas · <strong style="color:var(--accent)">${total.toFixed(1)} Ly total</strong>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="val">${route.length}</div><div class="lbl">sistemas en ruta</div></div>
+      <div class="stat-box"><div class="val">${total.toFixed(0)}</div><div class="lbl">Ly totales</div></div>
+      <div class="stat-box"><div class="val">${route.length > 1 ? (total/(route.length-1)).toFixed(1) : 0}</div><div class="lbl">Ly por salto medio</div></div>
+    </div>
+    ${steps}
+  `;
+}
+
+function renderMatrix() {
+  if (!analysisResult) return;
+  const { matrix, selected } = analysisResult;
+  const el = document.getElementById('matrixContent');
+  document.getElementById('emptyMatrix').style.display = 'none';
+  el.style.display = 'block';
+
+  const header = `<th>CMDR →</th>` + selected.map(c =>
+    `<th style="color:${c.color}">${c.name.split(' ')[0]}</th>`).join('');
+
+  const rows = selected.map(cA => {
+    const cells = selected.map(cB => {
+      const entry = matrix[cA.name]?.[cB.name];
+      if (!entry || entry.dist === 0) return '<td style="background:var(--bg3);text-align:center">—</td>';
+      const { dist: d, sysA, sysB } = entry;
+      if (d === Infinity || d === undefined) return '<td style="color:var(--muted);text-align:center">?</td>';
+      const tip = sysA && sysB
+        ? `data-ca="${cA.name}" data-cb="${cB.name}" data-sa="${sysA}" data-sb="${sysB}" data-dist="${d.toFixed(1)}"`
+        : '';
+      return `<td><span class="dist-badge ${distColor(d)} matrix-cell" style="cursor:pointer" ${tip}>${d.toFixed(1)} Ly</span></td>`;
+    }).join('');
+    return `<tr><td style="color:${cA.color};font-weight:bold">${cA.name}</td>${cells}</tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="info-box">Distancia mínima entre cualquier par de sistemas de cada CMDR · <strong>Haz clic en una celda</strong> para ver los sistemas exactos</div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <div id="matrixPopup" style="display:none;position:fixed;z-index:200;background:var(--bg2);border:1px solid var(--accent);border-radius:6px;padding:14px 16px;font-size:12px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,.6)"></div>
+  `;
+
+  el.querySelectorAll('.matrix-cell').forEach(cell => {
+    cell.addEventListener('click', e => {
+      const cA = cell.dataset.ca, cB = cell.dataset.cb;
+      const sA = cell.dataset.sa, sB = cell.dataset.sb;
+      const dist = cell.dataset.dist;
+      const colorA = analysisResult.selected.find(c => c.name === cA)?.color || '#fff';
+      const colorB = analysisResult.selected.find(c => c.name === cB)?.color || '#fff';
+      const popup = document.getElementById('matrixPopup');
+      popup.innerHTML = `
+        <div style="margin-bottom:8px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px">Par más cercano</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="color:${colorA};font-size:10px;margin-bottom:2px">${cA}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="color:var(--text);font-size:13px;font-weight:bold">${sA}</span>
+              <button onclick="copySystem('${sA}',this)" title="Copiar" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit">📋</button>
+            </div>
+          </div>
+          <div style="color:var(--accent);font-size:18px">↔</div>
+          <div>
+            <div style="color:${colorB};font-size:10px;margin-bottom:2px">${cB}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="color:var(--text);font-size:13px;font-weight:bold">${sB}</span>
+              <button onclick="copySystem('${sB}',this)" title="Copiar" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit">📋</button>
+            </div>
+          </div>
+          <div style="margin-left:auto">
+            <span class="dist-badge ${distColor(parseFloat(dist))}" style="font-size:14px;padding:4px 10px">${dist} Ly</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap">
+          <label style="font-size:10px;color:var(--muted)">Radio máx:</label>
+          <input id="routeRadius" type="number" value="14.9" min="1" max="100" step="0.1"
+            style="width:64px;background:var(--bg3);border:1px solid var(--border);color:var(--accent);font-family:inherit;font-size:11px;padding:3px 6px;border-radius:3px;text-align:center">
+          <span style="font-size:10px;color:var(--muted)">Ly</span>
+          <button class="btn success" style="width:auto;padding:3px 12px"
+            onclick="openColonizationRoute('${sA}','${sB}','${cA}','${cB}',+document.getElementById('routeRadius').value)">🗺 Calcular ruta colonización</button>
+          <button class="btn" style="width:auto;padding:3px 10px" onclick="document.getElementById('matrixPopup').style.display='none'">Cerrar</button>
+        </div>
+      `;
+      // Posicionar cerca del clic
+      const rect = cell.getBoundingClientRect();
+      const pw = 480, ph = 120;
+      let left = rect.left + window.scrollX;
+      let top = rect.bottom + window.scrollY + 6;
+      if (left + pw > window.innerWidth) left = window.innerWidth - pw - 10;
+      if (top + ph > window.innerHeight) top = rect.top + window.scrollY - ph - 6;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+      popup.style.display = 'block';
+      e.stopPropagation();
+    });
+  });
+
+  // Cerrar popup al clicar fuera
+  document.addEventListener('click', () => {
+    const p = document.getElementById('matrixPopup');
+    if (p) p.style.display = 'none';
+  }, { once: false });
+}
+
+function updateDataTab() {
+  const el = document.getElementById('dataContent');
+  document.getElementById('emptyData').style.display = 'none';
+  el.style.display = 'block';
+
+  const rows = cmdrs.map(c => {
+    const withCoords = c.systems.filter(s => coords[s] !== undefined && coords[s] !== null).length;
+    const missing = c.systems.filter(s => !(s in coords)).length;
+    const notFound = c.systems.filter(s => s in coords && coords[s] === null).length;
+    return `
+      <tr>
+        <td style="color:${c.color}">${c.name}</td>
+        <td>${c.systems.length}</td>
+        <td class="coords-ok">${withCoords}</td>
+        <td class="coords-missing">${notFound}</td>
+        <td style="color:var(--muted)">${missing}</td>
+      </tr>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>CMDR</th><th>Total</th><th>✓ Coords</th><th>✗ No encontrado</th><th>⏳ Sin consultar</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:12px">
+      <button class="btn" onclick="clearCoords()">🗑 Limpiar caché de coordenadas</button>
+    </div>
+  `;
+}
+
+function clearCoords() {
+  coords = {};
+  localStorage.removeItem('malaspina_coords');
+  document.getElementById('coordsStatus').textContent = 'Caché limpiada';
+  document.getElementById('coordsProgress').style.width = '0';
+  updateButtons();
+  updateDataTab();
+}
+
+// ──────────────────────────────────────────────────────────────
+// TABS
+// ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => switchTab(tab.dataset.tab);
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+}
+
+// ──────────────────────────────────────────────────────────────
+// RUTA DE COLONIZACIÓN ENTRE DOS SISTEMAS (EDSM sphere-systems)
+// ──────────────────────────────────────────────────────────────
+async function openColonizationRoute(sysA, sysB, cmdrA, cmdrB, radius) {
+  const RADIUS = (radius && radius > 0) ? radius : 14.9;
+  document.getElementById('matrixPopup').style.display = 'none';
+
+  // Obtener / reutilizar coordenadas
+  let cA = coords[sysA], cB = coords[sysB];
+  if (!cA || !cB) {
+    // Intentar fetchear las que falten
+    for (const [name, ref] of [[sysA, 'cA'],[sysB, 'cB']]) {
+      if (!coords[name]) {
+        try {
+          const r = await fetch(`https://www.edsm.net/api-v1/system?systemName=${encodeURIComponent(name)}&showCoordinates=1`);
+          const d = await r.json();
+          coords[name] = d.coords || null;
+        } catch(e) { coords[name] = null; }
+      }
+    }
+    cA = coords[sysA]; cB = coords[sysB];
+  }
+
+  showRouteModal(`Calculando ruta: ${sysA} → ${sysB}`, '<div class="status-text">Consultando EDSM...</div><div class="progress-bar"><div class="progress-fill" id="routeProgress" style="width:5%"></div></div>');
+
+  if (!cA || !cB) {
+    showRouteModal('Error', '<p style="color:var(--red)">No se pudieron obtener las coordenadas de los sistemas de origen/destino.</p>');
+    return;
+  }
+
+  const MAX_STEPS = 30;
+  const route = [{ name: sysA, coords: cA, cmdr: cmdrA, legDist: 0 }];
+  const visited = new Set([sysA.toUpperCase()]);
+  let current = { name: sysA, coords: cA };
+  let totalDist = 0;
+
+  const setProgress = (pct, txt) => {
+    const el = document.getElementById('routeProgress');
+    if (el) el.style.width = pct + '%';
+    const st = document.getElementById('routeStatus');
+    if (st) st.textContent = txt;
+  };
+
+  showRouteModal(`Ruta de colonización: ${sysA} → ${sysB}`,
+    `<div class="status-text" id="routeStatus">Calculando paso 1...</div>
+     <div class="progress-bar"><div class="progress-fill" id="routeProgress" style="width:5%"></div></div>
+     <div id="routeSteps"></div>`);
+
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const distToEnd = dist3d(current.coords, cB);
+    if (distToEnd <= RADIUS) {
+      // Llegamos al destino
+      const legDist = distToEnd;
+      totalDist += legDist;
+      route.push({ name: sysB, coords: cB, cmdr: cmdrB, legDist });
+      break;
+    }
+
+    setProgress(Math.min(90, 10 + step * 3), `Paso ${step + 1}: consultando sistemas cercanos a ${current.name}...`);
+
+    // Query EDSM sphere
+    let candidates = [];
+    try {
+      const url = `https://www.edsm.net/api-v1/sphere-systems?` +
+        `x=${current.coords.x}&y=${current.coords.y}&z=${current.coords.z}` +
+        `&radius=${RADIUS}&showCoordinates=1`;
+      const resp = await fetch(url);
+      candidates = await resp.json();
+    } catch(e) { candidates = []; }
+
+    // Filtrar: no visitados, que avancen hacia B
+    const dirX = cB.x - current.coords.x;
+    const dirY = cB.y - current.coords.y;
+    const dirZ = cB.z - current.coords.z;
+    const dirLen = Math.sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
+
+    const scored = candidates
+      .filter(c => c.coords && !visited.has(c.name.toUpperCase()))
+      .map(c => {
+        const dx = c.coords.x - current.coords.x;
+        const dy = c.coords.y - current.coords.y;
+        const dz = c.coords.z - current.coords.z;
+        // Proyección sobre la dirección A→B (progreso real)
+        const progress = (dx*dirX + dy*dirY + dz*dirZ) / dirLen;
+        // Desviación lateral respecto a la línea A-B
+        const legDist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        const lateral = Math.sqrt(Math.max(0, legDist*legDist - progress*progress));
+        // Score: maximizar progreso, penalizar desviación
+        const distToB = dist3d(c.coords, cB);
+        return { name: c.name, coords: c.coords, progress, lateral, distToB, legDist };
+      })
+      .filter(c => c.progress > 0)  // solo sistemas que avancen hacia B
+      .sort((a, b) => a.distToB - b.distToB); // priorizar el más cercano a B
+
+    if (!scored.length) {
+      // Sin candidatos — salto directo al destino
+      const legDist = dist3d(current.coords, cB);
+      totalDist += legDist;
+      route.push({ name: sysB, coords: cB, cmdr: cmdrB, legDist });
+      break;
+    }
+
+    const best = scored[0];
+    visited.add(best.name.toUpperCase());
+    totalDist += best.legDist;
+    route.push({ name: best.name, coords: best.coords, cmdr: '', legDist: best.legDist });
+    current = best;
+
+    // Render parcial
+    renderRouteSteps(route, sysA, sysB, cmdrA, cmdrB, totalDist, false);
+    await new Promise(r => setTimeout(r, 80));
+  }
+
+  setProgress(100, `Ruta completada: ${route.length} sistemas · ${totalDist.toFixed(1)} Ly`);
+  renderRouteSteps(route, sysA, sysB, cmdrA, cmdrB, totalDist, true);
+}
+
+function renderRouteSteps(route, sysA, sysB, cmdrA, cmdrB, totalDist, done) {
+  const el = document.getElementById('routeSteps');
+  if (!el) return;
+  const colorA = analysisResult?.selected.find(c => c.name === cmdrA)?.color || '#00ccff';
+  const colorB = analysisResult?.selected.find(c => c.name === cmdrB)?.color || '#ff8c00';
+
+  const steps = route.map((r, i) => {
+    const isStart = i === 0;
+    const isEnd = r.name === sysB;
+    const color = isStart ? colorA : isEnd ? colorB : 'var(--text)';
+    const tag = isStart ? `<span style="color:${colorA};font-size:10px;border:1px solid ${colorA};border-radius:2px;padding:1px 5px;margin-right:6px">${cmdrA}</span>`
+               : isEnd   ? `<span style="color:${colorB};font-size:10px;border:1px solid ${colorB};border-radius:2px;padding:1px 5px;margin-right:6px">${cmdrB}</span>`
+               : `<span style="color:var(--muted);font-size:10px;border:1px solid var(--border);border-radius:2px;padding:1px 5px;margin-right:6px">EDSM</span>`;
+    return `
+      <div class="route-step" style="${isStart||isEnd ? 'border-color:'+color : ''}">
+        <span class="route-num">${i+1}</span>
+        <div class="route-sys" style="color:${color}">${tag}${r.name}</div>
+        <button onclick="copySystem('${r.name.replace(/'/g,"\\'")}',this)" title="Copiar"
+          style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;flex-shrink:0">📋</button>
+        ${r.legDist > 0 ? `<span class="route-dist">+${r.legDist.toFixed(1)} Ly</span>` : '<span class="route-dist" style="color:var(--green)">INICIO</span>'}
+      </div>`;
+  }).join('');
+
+  el.innerHTML = done ? `
+    <div class="stat-row" style="margin-top:12px">
+      <div class="stat-box"><div class="val">${route.length}</div><div class="lbl">sistemas</div></div>
+      <div class="stat-box"><div class="val">${totalDist.toFixed(0)}</div><div class="lbl">Ly totales</div></div>
+      <div class="stat-box"><div class="val">${route.length > 1 ? (totalDist/(route.length-1)).toFixed(1) : 0}</div><div class="lbl">Ly/salto medio</div></div>
+    </div>
+    <div style="margin-bottom:8px">${steps}</div>
+  ` : `<div style="margin-top:8px">${steps}</div>`;
+}
+
+function showRouteModal(title, bodyHtml) {
+  let modal = document.getElementById('routeModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'routeModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:20px;width:620px;max-height:80vh;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h3 id="routeModalTitle" style="color:var(--accent2);font-size:13px"></h3>
+          <button class="btn" style="width:auto;padding:3px 10px" onclick="document.getElementById('routeModal').style.display='none'">✕ Cerrar</button>
+        </div>
+        <div id="routeModalBody" style="overflow-y:auto;flex:1"></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  modal.querySelector('#routeModalTitle').textContent = title;
+  modal.querySelector('#routeModalBody').innerHTML = bodyHtml;
+  modal.style.display = 'flex';
+}
+
+// ──────────────────────────────────────────────────────────────
+// COPIAR SISTEMA AL PORTAPAPELES
+// ──────────────────────────────────────────────────────────────
+function copySystem(name, btn) {
+  navigator.clipboard.writeText(name).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1200);
+  }).catch(() => {
+    // Fallback para navegadores sin clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = name;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = '📋', 1200);
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// EXPORTAR CSV
+// ──────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!cmdrs.length) { alert('No hay datos cargados'); return; }
+  const rows = [['CMDR','Sistema','X','Y','Z']];
+  for (const c of cmdrs) {
+    for (const s of c.systems) {
+      const co = coords[s];
+      rows.push([c.name, s, co ? co.x : '', co ? co.y : '', co ? co.z : '']);
+    }
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'malaspina_colony_data.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ──────────────────────────────────────────────────────────────
+// COLONIZACIÓN MANUAL
+// ──────────────────────────────────────────────────────────────
+let waypointCount = 0;
+
+function addWaypoint() {
+  const id = ++waypointCount;
+  const c = document.getElementById('waypointsContainer');
+  const div = document.createElement('div');
+  div.id = `wp-${id}`;
+  div.innerHTML = `
+    <div class="sys-input-row">
+      <span class="label" style="color:var(--yellow)">Waypoint ${id}</span>
+      <input type="text" id="wpInput-${id}" placeholder="Sistema intermedio..." oninput="lookupManual('wpInput-${id}','wpHint-${id}')">
+      <button class="btn-icon" onclick="lookupManual('wpInput-${id}','wpHint-${id}')" title="Buscar">🔍</button>
+      <button class="btn-icon remove" onclick="removeWaypoint(${id})" title="Eliminar">✕</button>
+    </div>
+    <div class="sys-coords-hint" id="wpHint-${id}"></div>
+  `;
+  c.appendChild(div);
+}
+
+function removeWaypoint(id) {
+  document.getElementById(`wp-${id}`)?.remove();
+}
+
+async function lookupManual(inputId, hintId) {
+  const name = document.getElementById(inputId).value.trim().toUpperCase();
+  const hint = document.getElementById(hintId);
+  if (!name) { hint.innerHTML = ''; return; }
+  // Check cache first
+  if (coords[name] !== undefined) {
+    showHint(hint, name, coords[name]);
+    return;
+  }
+  hint.innerHTML = `<span style="color:var(--muted)">Buscando...</span>`;
+  try {
+    const r = await fetch(`https://www.edsm.net/api-v1/system?systemName=${encodeURIComponent(name)}&showCoordinates=1`);
+    const d = await r.json();
+    coords[name] = d.coords || null;
+    try { localStorage.setItem('malaspina_coords', JSON.stringify(coords)); } catch(e) {}
+    showHint(hint, name, coords[name]);
+  } catch(e) {
+    hint.innerHTML = `<span style="color:var(--red)">Error de red</span>`;
+  }
+}
+
+function showHint(hint, name, c) {
+  if (c) {
+    hint.innerHTML = `<span class="coords-ok">✓ ${c.x.toFixed(2)}, ${c.y.toFixed(2)}, ${c.z.toFixed(2)}</span>`;
+  } else {
+    hint.innerHTML = `<span class="coords-missing">✗ No encontrado en EDSM</span>`;
+  }
+}
+
+async function calcManualRoute() {
+  const origin = document.getElementById('manualOrigin').value.trim().toUpperCase();
+  const dest = document.getElementById('manualDest').value.trim().toUpperCase();
+  const radius = +document.getElementById('manualRadius').value || 14.9;
+  const result = document.getElementById('manualRouteResult');
+
+  if (!origin || !dest) { alert('Introduce al menos origen y destino'); return; }
+
+  // Recoger waypoints en orden
+  const wps = [];
+  document.querySelectorAll('#waypointsContainer [id^="wp-"]').forEach(div => {
+    const id = div.id.replace('wp-','');
+    const val = document.getElementById(`wpInput-${id}`)?.value.trim().toUpperCase();
+    if (val) wps.push(val);
+  });
+
+  const stops = [origin, ...wps, dest];
+  result.innerHTML = `<div class="status-text" id="manualStatus">Verificando coordenadas...</div>
+    <div class="progress-bar"><div class="progress-fill" id="manualProgress" style="width:2%"></div></div>`;
+
+  // Asegurarse de tener coords para todos los stops
+  for (const sys of stops) {
+    if (!coords[sys]) {
+      try {
+        const r = await fetch(`https://www.edsm.net/api-v1/system?systemName=${encodeURIComponent(sys)}&showCoordinates=1`);
+        const d = await r.json();
+        coords[sys] = d.coords || null;
+      } catch(e) { coords[sys] = null; }
+    }
+    if (!coords[sys]) {
+      result.innerHTML = `<p style="color:var(--red)">No se encontraron coordenadas para: <strong>${sys}</strong></p>`;
+      return;
+    }
+  }
+
+  // Calcular ruta segmento a segmento
+  const fullRoute = [];
+  let totalDist = 0;
+  const setP = (pct, txt) => {
+    const el = document.getElementById('manualProgress');
+    if (el) el.style.width = pct + '%';
+    const st = document.getElementById('manualStatus');
+    if (st) st.textContent = txt;
+  };
+
+  for (let seg = 0; seg < stops.length - 1; seg++) {
+    const fromSys = stops[seg];
+    const toSys = stops[seg + 1];
+    setP(5 + seg / (stops.length - 1) * 90, `Segmento ${seg + 1}/${stops.length - 1}: ${fromSys} → ${toSys}`);
+
+    const segRoute = await calcSegment(fromSys, toSys, radius, seg === 0);
+    // Evitar duplicar el punto de unión entre segmentos
+    const start = seg === 0 ? 0 : 1;
+    for (let i = start; i < segRoute.length; i++) {
+      totalDist += segRoute[i].legDist;
+      fullRoute.push(segRoute[i]);
+    }
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  setP(100, `Ruta completada: ${fullRoute.length} sistemas · ${totalDist.toFixed(1)} Ly`);
+  renderManualRoute(fullRoute, stops, totalDist);
+}
+
+async function calcSegment(fromSys, toSys, radius, isFirst) {
+  const cA = coords[fromSys], cB = coords[toSys];
+  const route = [{ name: fromSys, coords: cA, isWaypoint: true, legDist: 0 }];
+  const visited = new Set([fromSys.toUpperCase()]);
+  let current = { name: fromSys, coords: cA };
+  const MAX_STEPS = 40;
+
+  for (let step = 0; step < MAX_STEPS; step++) {
+    if (dist3d(current.coords, cB) <= radius) {
+      route.push({ name: toSys, coords: cB, isWaypoint: true, legDist: dist3d(current.coords, cB) });
+      break;
+    }
+    let candidates = [];
+    try {
+      const url = `https://www.edsm.net/api-v1/sphere-systems?x=${current.coords.x}&y=${current.coords.y}&z=${current.coords.z}&radius=${radius}&showCoordinates=1`;
+      const resp = await fetch(url);
+      candidates = await resp.json();
+    } catch(e) { candidates = []; }
+
+    const dirX = cB.x - current.coords.x, dirY = cB.y - current.coords.y, dirZ = cB.z - current.coords.z;
+    const dirLen = Math.sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
+
+    const scored = candidates
+      .filter(c => c.coords && !visited.has(c.name.toUpperCase()))
+      .map(c => {
+        const dx = c.coords.x - current.coords.x, dy = c.coords.y - current.coords.y, dz = c.coords.z - current.coords.z;
+        const progress = (dx*dirX + dy*dirY + dz*dirZ) / dirLen;
+        const legDist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        return { name: c.name, coords: c.coords, distToB: dist3d(c.coords, cB), legDist, progress };
+      })
+      .filter(c => c.progress > 0)
+      .sort((a, b) => a.distToB - b.distToB);
+
+    if (!scored.length) {
+      route.push({ name: toSys, coords: cB, isWaypoint: true, legDist: dist3d(current.coords, cB) });
+      break;
+    }
+    const best = scored[0];
+    visited.add(best.name.toUpperCase());
+    route.push({ name: best.name, coords: best.coords, isWaypoint: false, legDist: best.legDist });
+    current = best;
+    await new Promise(r => setTimeout(r, 30));
+  }
+  return route;
+}
+
+function renderManualRoute(route, stops, totalDist) {
+  const stopsSet = new Set(stops.map(s => s.toUpperCase()));
+  const el = document.getElementById('manualRouteResult');
+  const steps = route.map((r, i) => {
+    const isStop = stopsSet.has(r.name.toUpperCase());
+    const isFirst = i === 0, isLast = i === route.length - 1;
+    const color = isFirst ? 'var(--green)' : isLast ? 'var(--red)' : isStop ? 'var(--yellow)' : 'var(--text)';
+    const tag = isFirst ? `<span style="color:var(--green);font-size:10px;border:1px solid var(--green);border-radius:2px;padding:1px 5px;margin-right:6px">ORIGEN</span>`
+              : isLast  ? `<span style="color:var(--red);font-size:10px;border:1px solid var(--red);border-radius:2px;padding:1px 5px;margin-right:6px">DESTINO</span>`
+              : isStop  ? `<span style="color:var(--yellow);font-size:10px;border:1px solid var(--yellow);border-radius:2px;padding:1px 5px;margin-right:6px">WAYPOINT</span>`
+              : `<span style="color:var(--muted);font-size:10px;border:1px solid var(--border);border-radius:2px;padding:1px 5px;margin-right:6px">EDSM</span>`;
+    return `
+      <div class="route-step" style="${isStop ? 'border-color:'+color+';' : ''}">
+        <span class="route-num">${i+1}</span>
+        <div class="route-sys" style="color:${color}">${tag}${r.name}</div>
+        <button onclick="copySystem('${r.name.replace(/'/g,"\\'")}',this)" title="Copiar"
+          style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;flex-shrink:0">📋</button>
+        ${r.legDist > 0 ? `<span class="route-dist">+${r.legDist.toFixed(1)} Ly</span>` : '<span class="route-dist" style="color:var(--green)">INICIO</span>'}
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-box"><div class="val">${route.length}</div><div class="lbl">sistemas</div></div>
+      <div class="stat-box"><div class="val">${totalDist.toFixed(0)}</div><div class="lbl">Ly totales</div></div>
+      <div class="stat-box"><div class="val">${route.length > 1 ? (totalDist/(route.length-1)).toFixed(1) : 0}</div><div class="lbl">Ly/salto medio</div></div>
+      <div class="stat-box"><div class="val">${stops.length - 1}</div><div class="lbl">segmentos</div></div>
+    </div>
+    ${steps}
+  `;
+}
+
+// ──────────────────────────────────────────────────────────────
+// INIT: cargar coords del localStorage si existen
+// ──────────────────────────────────────────────────────────────
+(function init() {
+  try {
+    const stored = localStorage.getItem('malaspina_coords');
+    if (stored) coords = JSON.parse(stored);
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>
